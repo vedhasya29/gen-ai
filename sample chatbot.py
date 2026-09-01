@@ -40,12 +40,16 @@ def process_pdf(file_bytes):
     documents = loader.load()
     os.remove(tmp_path)
 
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=150
+    )
     chunks = text_splitter.split_documents(documents)
 
     return FAISS.from_documents(chunks, embedding_model)
 
 vector_db = None
+
 if uploaded_file:
     vector_db = process_pdf(uploaded_file.getvalue())
     st.sidebar.success("PDF indexed successfully!")
@@ -61,19 +65,27 @@ for msg in st.session_state.messages:
 
 # User Chat Input
 if prompt := st.chat_input("Ask something about your document..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.session_state.messages.append({
+        "role": "user",
+        "content": prompt
+    })
+
     with st.chat_message("user"):
         st.markdown(prompt)
 
     # Retrieve context if document is loaded
     context = ""
+
     if vector_db:
         retrieved_docs = vector_db.similarity_search(prompt, k=3)
-        context = "\n\n".join([doc.page_content for doc in retrieved_docs])
+        context = "\n\n".join(
+            [doc.page_content for doc in retrieved_docs]
+        )
 
     # Construct System Prompt
     if context:
-        system_instruction = f"""Answer the question using ONLY the provided document context. If the answer is not in the context, say "I couldn't find that in the document."
+        system_instruction = f"""Answer the question using ONLY the provided document context.
+If the answer is not in the context, say "I couldn't find that in the document."
 
 Context:
 {context}"""
@@ -81,27 +93,46 @@ Context:
         system_instruction = "You are a helpful general AI assistant."
 
     # Build messages array for API payload
-    messages_payload = [{"role": "system", "content": system_instruction}] + [
-        {"role": m["role"], "content": m["content"]} for m in st.session_state.messages
+    messages_payload = [
+        {
+            "role": "system",
+            "content": system_instruction
+        }
+    ] + [
+        {
+            "role": m["role"],
+            "content": m["content"]
+        }
+        for m in st.session_state.messages
     ]
 
     # Stream response from Groq
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
+
         try:
             completion = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model="openai/gpt-oss-120b",
                 messages=messages_payload,
                 stream=True,
             )
-            
+
             full_response = ""
+
             for chunk in completion:
-                full_response += (chunk.choices[0].delta.content or "")
-                message_placeholder.markdown(full_response + "▌")
-            
+                full_response += (
+                    chunk.choices[0].delta.content or ""
+                )
+                message_placeholder.markdown(
+                    full_response + "▌"
+                )
+
             message_placeholder.markdown(full_response)
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
+
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": full_response
+            })
 
         except Exception as e:
             st.error(f"Error: {str(e)}")
