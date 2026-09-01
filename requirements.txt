@@ -1,3 +1,10 @@
+streamlit
 tempfile
+os
 groq
-langchain
+langchain_community
+PyPDFLoader
+RecursiveCharacterTextSplitter
+HuggingFaceEmbeddings
+FAISS
+st.session_state
