@@ -1,6 +1,4 @@
 streamlit
-tempfile
-os
 groq
 langchain_community
 PyPDFLoader
